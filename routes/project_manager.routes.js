@@ -32,6 +32,9 @@ const projectManagerController = require('../controllers/project_manager.control
  *               project_name:
  *                 type: string
  *                 example: "Project Alpha"
+ *               password:
+ *                 type: string
+ *                 example: "password"
  *     responses:
  *       201:
  *         description: Project Manager created

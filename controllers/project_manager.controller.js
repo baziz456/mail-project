@@ -2,12 +2,17 @@ const ProjectManager = require('../models/project_manager.model');
 
 exports.createProjectManager = async (req, res) => {
     try {
-        const projectManager = await ProjectManager.create(req.body);
+        const projectManagerData = {
+            ...req.body,
+            password: req.body.password,
+        };
+        const projectManager = await ProjectManager.create(projectManagerData);
         res.status(201).json({ message: 'Project Manager created', data: projectManager });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
 };
+
 
 exports.getAllProjectManagers = async (req, res) => {
     try {

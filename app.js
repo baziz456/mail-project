@@ -4,14 +4,38 @@ const swaggerUi = require('swagger-ui-express');
 const clientRoutes = require('./routes/client.routes');
 const projectManagerRoutes = require('./routes/project_manager.routes');
 const recipientRoutes = require('./routes/recipient.routes');
-const clientRecipientRouter = require('./routes/client_recipient.routes')
+const clientRecipientRouter = require('./routes/client_recipient.routes');
 const emailRouter = require('./routes/email.routes');
+const cron = require('node-cron');
+const { ProjectManager } = require('./models');
+const { fetchEmails, checkForUnrepliedEmails, imapConfig } = require('./services/email.service');
+const sequelize = require('./config/db.config');
 
+async function processProjectManagerEmails() {
+    try {
+        console.log("after 1 minute over");
+        const projectManagers = await ProjectManager.findAll();
+
+        for (const pm of projectManagers) {
+            console.log("email length:", pm.email.length, "password length:", pm.password.length);
+            console.log("email:", pm.email.trim(), "password:", pm.password.trim());
+            const config = imapConfig(pm.email, pm.password);
+            await fetchEmails(pm, config);
+        }
+
+        await checkForUnrepliedEmails();
+    } catch (error) {
+        console.error('Error processing project manager emails:', error);
+    }
+}
+
+// Schedule task to run every minute (instead of every 5 minutes)
+cron.schedule('*/1 * * * *', processProjectManagerEmails); // This runs every minute
 
 const app = express(); // Initialize the Express application
 
 // Middleware to parse JSON bodies
-app.use(express.json()); // Ensure you can handle JSON request bodies
+app.use(express.json());
 
 // Swagger options
 const options = {
@@ -24,7 +48,7 @@ const options = {
         },
         servers: [
             {
-                url: 'http://localhost:3000', // Your server URL
+                url: 'http://localhost:3000',
             },
         ],
     },
@@ -48,8 +72,6 @@ app.use('/client-recipients', clientRecipientRouter);
 // Register email routes
 app.use('/emails', emailRouter);
 
-
-
 // Define your routes here
 app.get('/', (req, res) => {
     res.send('Welcome to the API');
@@ -59,4 +81,8 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
+    // Syncing database
+    sequelize.sync().then(() => {
+        console.log('Database connected and synced');
+    });
 });
